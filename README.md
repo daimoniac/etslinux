@@ -1,5 +1,7 @@
 # ETS5 on Linux
 
+![ETS 5.7 on Ubuntu: the application menu, the panel icon, and an open project](docs/ets5-on-linux.png)
+
 Run KNX ETS 5.7 under Wine, with the license stick either plugged into this
 machine or forwarded from another Linux host over USB/IP ([RUDY](https://github.com/ckware/rudy)).
 
