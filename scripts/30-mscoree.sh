@@ -19,18 +19,29 @@ download "$DOTNET40_URL" "$ETS5_CACHE/dotNetFx40_Full_x86_x64.exe" "$DOTNET40_SH
 extract=$ETS5_CACHE/dotnet40-msis
 rm -rf "$extract"
 mkdir -p "$extract"
+# The file payload lives in netfx_Core.mzz, next to the MSIs. 7-Zip 23+
+# opens an extracted MSI and fails if that cabinet was not extracted too.
+# The Media table names it netfx_core.mzz; Linux distinguishes that from
+# netfx_Core.mzz, so msiextract needs the table's exact name.
 7z x -y "-o$extract" "$ETS5_CACHE/dotNetFx40_Full_x86_x64.exe" \
-  netfx_Core_x86.msi netfx_Core_x64.msi >/dev/null
+  netfx_Core_x86.msi netfx_Core_x64.msi netfx_Core.mzz >/dev/null
 
 x86=$extract/netfx_Core_x86.msi
 x64=$extract/netfx_Core_x64.msi
 [ -f "$x86" ] && [ -f "$x64" ] || die "netfx_Core MSIs were not inside the .NET 4.0 redistributable"
+cab_name=$(msiinfo export "$x86" Media | awk -F'\t' 'NR==4 { print $4 }')
+[ -n "$cab_name" ] || die "netfx_Core_x86.msi Media table has no cabinet"
+if [ ! -e "$extract/$cab_name" ]; then
+  cab_file=$(find "$extract" -maxdepth 1 -iname "$cab_name" -printf '%f\n' | awk 'NR==1 { print }')
+  [ -n "$cab_file" ] || die "cabinet $cab_name was not inside the .NET 4.0 redistributable"
+  ln -s "$cab_file" "$extract/$cab_name"
+fi
 
 files=$ETS5_CACHE/dotnet40-files
 rm -rf "$files"
 mkdir -p "$files/x86" "$files/x64"
-msiextract --directory "$files/x86" "$x86" >/dev/null
-msiextract --directory "$files/x64" "$x64" >/dev/null
+msiextract --directory "$files/x86" "$x86" >/dev/null 2>&1
+msiextract --directory "$files/x64" "$x64" >/dev/null 2>&1
 
 sys32=$WINEPREFIX/drive_c/windows/system32
 syswow=$WINEPREFIX/drive_c/windows/syswow64

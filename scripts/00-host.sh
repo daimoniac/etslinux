@@ -15,7 +15,7 @@ fi
 codename=$(os_codename)
 
 as_root apt-get update
-as_root apt-get install -y ca-certificates curl gnupg usbutils
+as_root apt-get install -y ca-certificates curl gnupg usbutils kmod udev
 
 if [ "$role" = client ]; then
   as_root install -d -m 0755 /etc/apt/keyrings
@@ -52,7 +52,7 @@ EOF
     pkg=winehq-stable
   fi
   printf 'installing %s (need Wine >= %s; winehq-stable candidate is %s)\n' "$pkg" "$WINE_MIN_VERSION" "${stable:-none}"
-  as_root apt-get install -y "$pkg" p7zip-full msitools cabextract \
+  as_root apt-get install -y "$pkg" p7zip-full msitools cabextract file python3 \
     fonts-droid-fallback fonts-liberation fonts-crosextra-carlito
 
   if ! wine_is_new_enough; then
@@ -61,7 +61,7 @@ EOF
   printf 'Wine %s\n' "$(wine_version_number)"
 
   as_root install -m 0644 "$ROOT/modules/vhci-hcd.conf" /etc/modules-load.d/vhci-hcd.conf
-  as_root modprobe vhci-hcd
+  as_root modprobe vhci-hcd || die "could not load vhci-hcd (kmod, and a host kernel that provides the module)"
   as_root install -m 0644 "$ROOT/udev/70-knx-ets-dongle.rules" /etc/udev/rules.d/70-knx-ets-dongle.rules
   as_root udevadm control --reload
   as_root udevadm trigger --subsystem-match=usb --subsystem-match=hidraw || true
@@ -74,7 +74,7 @@ else
   as_root install -m 0644 "$ROOT/modules/usbip-host.conf" /etc/modules-load.d/usbip-host.conf
   # The module must exist before the server container's first start. Docker
   # otherwise creates a directory where the sysfs bind source should be.
-  as_root modprobe usbip-host
+  as_root modprobe usbip-host || die "could not load usbip-host (kmod, and a host kernel that provides the module)"
   if ! command -v docker >/dev/null 2>&1; then
     die "docker is not installed; this script does not install Docker"
   fi

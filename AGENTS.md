@@ -72,8 +72,10 @@ zero exit code is not evidence.
 **Wine's `mscoree.dll` is not .NET.** It is a builtin that says Wine Mono is
 not installed. The ETS bootstrapper then plans no packages and still exits 0.
 `scripts/30-mscoree.sh` copies Microsoft's DLL out of the .NET 4.0
-`netfx_Core` MSIs (the 4.8 tree does not replace this file), sets the
-`native` override, and sets InstallRoot. Without InstallRoot, `csc.exe`
+`netfx_Core` MSIs (the 4.8 tree does not replace this file). The bytes
+are in `netfx_Core.mzz`; the MSI Media table calls that cabinet
+`netfx_core.mzz`, and msiextract only opens the table's spelling. The
+script sets the `native` override and InstallRoot. Without InstallRoot, `csc.exe`
 opens a dialog: "mscoree.dll could not be loaded... Please reinstall the
 .NET Framework." That dialog is stale if the CLR check already printed
 `CLR OK`.

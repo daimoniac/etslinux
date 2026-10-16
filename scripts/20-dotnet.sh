@@ -12,9 +12,19 @@ need_cmd curl
 refuse_if_ets_running
 [ -f "$WINEPREFIX/system.reg" ] || die "no prefix at $WINEPREFIX; run scripts/10-prefix.sh"
 
+ensure_windows_10() {
+  product=$(windows_product_name)
+  case "$product" in
+    *Windows\ 10*) return 0 ;;
+  esac
+  set_windows_version win10
+}
+
 rel=$(dotnet_release 'HKLM\Software\Microsoft\NET Framework Setup\NDP\v4\Full')
 wow=$(dotnet_release 'HKLM\Software\Wow6432Node\Microsoft\NET Framework Setup\NDP\v4\Full')
 if [ "$rel" -ge "$DOTNET48_RELEASE" ] && [ "$wow" -ge "$DOTNET48_RELEASE" ]; then
+  # A previous run can die after the installer and before the win10 switch.
+  ensure_windows_10
   printf '.NET 4.8 already installed (Release %s)\n' "$rel"
   exit 0
 fi
@@ -35,5 +45,5 @@ if [ "$rel" -lt "$DOTNET48_RELEASE" ] || [ "$wow" -lt "$DOTNET48_RELEASE" ]; the
   die ".NET 4.8 installer returned without Release >= $DOTNET48_RELEASE (native=$rel wow=$wow)"
 fi
 
-set_windows_version win10
+ensure_windows_10
 printf '.NET 4.8 installed (Release %s); prefix set back to Windows 10\n' "$rel"

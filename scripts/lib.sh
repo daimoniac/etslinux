@@ -77,14 +77,19 @@ set_windows_version() {
   sleep 1
 }
 
+# wine reg query writes CRLF. A leftover CR makes $((0x80eb1)) fail and
+# leaves a Windows 7 product name that the 4.8 installer check rejects.
+strip_cr() { tr -d '\r'; }
+
 windows_product_name() {
   wine reg query 'HKLM\Software\Microsoft\Windows NT\CurrentVersion' /v ProductName 2>/dev/null \
+    | strip_cr \
     | awk -F'REG_SZ' '/ProductName/ {gsub(/^[[:space:]]+|[[:space:]]+$/, "", $2); print $2}'
 }
 
 dotnet_release() {
   local node=$1 raw
-  raw=$(wine reg query "$node" /v Release 2>/dev/null | awk '/Release/ {print $NF}' || true)
+  raw=$(wine reg query "$node" /v Release 2>/dev/null | strip_cr | awk '/Release/ {print $NF}' || true)
   if [ -z "$raw" ]; then
     printf '0\n'
     return
