@@ -31,6 +31,15 @@ for face in "Microsoft Sans Serif" "Segoe UI" "Arial" "Tahoma"; do
   wine reg add "$link" /v "$face" /t REG_MULTI_SZ /d "$fallback" /f >/dev/null
 done
 
+# A fresh prefix reports standard (grayscale) font smoothing. WPF then
+# draws its small labels with grayscale antialiasing, which looks soft at
+# fractional scale factors. ClearType with Windows' default gamma, RGB order.
+desktop='HKCU\Control Panel\Desktop'
+wine reg add "$desktop" /v FontSmoothing /d 2 /f >/dev/null
+wine reg add "$desktop" /v FontSmoothingType /t REG_DWORD /d 2 /f >/dev/null
+wine reg add "$desktop" /v FontSmoothingGamma /t REG_DWORD /d 1400 /f >/dev/null
+wine reg add "$desktop" /v FontSmoothingOrientation /t REG_DWORD /d 1 /f >/dev/null
+
 rm -rf "$WINEPREFIX/drive_c/users/$USER/AppData/Local/Microsoft/FontCache" \
        "$WINEPREFIX/drive_c/users/$USER/AppData/Local/FontCache" || true
 

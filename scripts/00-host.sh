@@ -53,7 +53,7 @@ EOF
   fi
   printf 'installing %s (need Wine >= %s; winehq-stable candidate is %s)\n' "$pkg" "$WINE_MIN_VERSION" "${stable:-none}"
   as_root apt-get install -y "$pkg" p7zip-full msitools cabextract file python3 \
-    fonts-droid-fallback fonts-liberation fonts-crosextra-carlito
+    x11-xserver-utils fonts-droid-fallback fonts-liberation fonts-crosextra-carlito
 
   case "$pkg" in
     winehq-stable) optbin=/opt/wine-stable/bin ;;

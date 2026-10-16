@@ -34,5 +34,26 @@ if [ -z "${ETS5_DETACHED:-}" ]; then
   exit 0
 fi
 
+# Wine draws at 96 DPI unless told otherwise. Under KDE/GNOME scaling on
+# Wayland, XWayland clients are expected to scale themselves and the desktop
+# publishes the factor as Xft.dpi, so without this ETS comes out too small.
+# Read on every start because the scale changes with the attached monitor.
+# The prefix's desktop process keeps the DPI it started with, and the query
+# below already starts it, so after a change Wine has to shut down before
+# ETS starts.
+dpi=${ETS5_DPI:-}
+if [ -z "$dpi" ] && command -v xrdb >/dev/null 2>&1; then
+  dpi=$(xrdb -query 2>/dev/null | awk '$1 == "Xft.dpi:" { printf "%d", $2 + 0.5 }')
+fi
+if [[ $dpi =~ ^[0-9]+$ ]] && [ "$dpi" -ge 96 ]; then
+  key='HKCU\Control Panel\Desktop'
+  current=$(wine reg query "$key" /v LogPixels 2>/dev/null | strip_cr | awk '$1 == "LogPixels" { print $3 }')
+  if [ "$current" != "$(printf '0x%x' "$dpi")" ]; then
+    wine reg add "$key" /v LogPixels /t REG_DWORD /d "$dpi" /f >/dev/null 2>&1 ||
+      printf 'warning: could not set LogPixels to %s\n' "$dpi" >&2
+    wineserver -w
+  fi
+fi
+
 cd "$WINEPREFIX/drive_c/Program Files (x86)/ETS5"
 exec wine ETS5.exe

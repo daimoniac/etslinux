@@ -103,6 +103,19 @@ under `HKCU\Software\Microsoft\Avalon.Graphics`, which forces WPF onto
 its CPU software rasterizer (Wine bug 49055). The prefix has to be
 restarted before an already-running ETS sees either change.
 
+**Text is too small and soft.** With fractional scaling on KDE Wayland
+(this laptop: 1.2), XWayland clients are expected to scale themselves,
+and the desktop publishes the factor as `Xft.dpi` (115 here). Wine
+ignores that and stays at 96 DPI. `bin/ets5` copies `Xft.dpi` into
+`LogPixels` under `HKCU\Control Panel\Desktop` on every start
+(`ETS5_DPI` overrides it). The prefix's desktop process keeps the DPI it
+was started with, so after a change the launcher waits for the
+wineserver to exit before it starts ETS; without that the first start
+still comes up small. `make fonts` also switches font smoothing to
+ClearType, because WPF's grayscale smoothing makes small labels look
+blurry at 1.2. Bitmap icons stay slightly soft at any non-integer
+factor; that is not fixable from the prefix.
+
 **The window flashes and the process is gone.** WPF calls
 `Environment.FailFast` from `TypefaceMap.MapUnresolvedCharacters` when font
 fallback names Segoe UI and the face is not installed. `make fonts` points
