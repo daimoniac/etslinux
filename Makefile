@@ -58,3 +58,4 @@ probe:
 check:
 	@for s in $(ROOT)/scripts/*.sh $(ROOT)/bin/ets5; do bash -n "$$s"; done
 	python3 $(ROOT)/scripts/import_dotnet40_com.py --self-test
+	python3 $(ROOT)/scripts/ets5hash.py --self-test

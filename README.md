@@ -71,6 +71,19 @@ prints `cctor OK`. Then `make launch`. The status bar is the license check.
 A `.license` file, if you have one, is imported from the ETS UI. Do not
 commit it.
 
+## Project file hashes
+
+ETS keeps a `.ets5hash` next to each hashed file in a ProjectStore directory.
+`scripts/ets5hash.py` recomputes it from `Proj/@Id` and `ProjInfo/@Guid` in
+the plaintext `P` file. `check` compares. `write` replaces the companion
+after the file itself has been edited. Close ETS first. The `.store` file
+is a separate check and is left alone.
+
+```sh
+scripts/ets5hash.py check ~/.local/share/wineprefixes/ets5/drive_c/ProgramData/KNX/ETS5/ProjectStore/P-XXXX
+scripts/ets5hash.py write ~/.local/share/wineprefixes/ets5/drive_c/ProgramData/KNX/ETS5/ProjectStore/P-XXXX
+```
+
 ## Layout
 
 | Path | Role |
@@ -86,6 +99,7 @@ commit it.
 | `compose/client` | `rudy-client` |
 | `compose/server` | `rudy-server` |
 | `probe/hidparent-probe.c` | HID parent-chain probe |
+| `scripts/ets5hash.py` | Recompute ProjectStore `.ets5hash` files |
 
 `AGENTS.md` is the runbook for repeating this unattended, including the
 failures that look like success.
