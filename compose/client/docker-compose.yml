@@ -1,0 +1,32 @@
+# Attaches the KNX ETS license stick exported by compose/server onto this
+# machine's USB stack, so Wine sees it as a local HID device.
+#
+# Host module vhci-hcd must already be loaded (scripts/00-host.sh client).
+# Copy ../../.env.example to ../../.env. Do not publish port 3240 here:
+# the client dials out to USBIP_SERVER.
+services:
+  rudy-client:
+    image: ckware/rudy-client:2024-03-20-bookworm@sha256:2d0737d9d06fcf66d46273dbf54bc5813088dda25e75b7bf83bcf72655470307
+    container_name: rudy-client
+    init: true
+    restart: unless-stopped
+    # AppArmor's docker-default profile denies every write under /sys, which
+    # is where usbip attaches the device. privileged is the setting that works.
+    privileged: true
+    # Host networking keeps the usbip socket in the host network namespace.
+    # On a bridge network the kernel would hold a socket that dies with the
+    # container's namespace.
+    network_mode: host
+    environment:
+      USBIP_SERVER: ${USBIP_SERVER:?set USBIP_SERVER in .env}
+      USBIP_PORT: ${USBIP_PORT:-3240}
+      USBIP_DEVICE_IDS: ${USBIP_DEVICE_IDS:-2a07:0102}
+      USBIP_DETACH_ORPHANS: "true"
+      TZ: ${TZ:-UTC}
+    volumes:
+      - /var/run/vhci_hcd:/var/run/vhci_hcd
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"

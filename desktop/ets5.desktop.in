@@ -1,0 +1,10 @@
+[Desktop Entry]
+Version=1.0
+Type=Application
+Name=KNX ETS5
+Comment=KNX ETS5 under Wine
+Exec=@BIN@
+Icon=ets5
+Terminal=false
+Categories=Utility;Engineering;
+StartupWMClass=ets5n.exe

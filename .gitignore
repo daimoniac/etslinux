@@ -1,2 +1,6 @@
 *.exe
 *.o
+.env
+*.license
+cache/
+*.log

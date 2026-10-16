@@ -1,0 +1,6 @@
+services:
+  rudy-server:
+    environment:
+      MQTT_OPTIONS: ${MQTT_OPTIONS:?set MQTT_OPTIONS}
+      MQTT_PUBLISH_TO_TOPIC: ${MQTT_PUBLISH_TO_TOPIC:-rudy/server}
+      MQTT_RELOAD_ON_TOPIC: ${MQTT_RELOAD_ON_TOPIC:-rudy/client/error/server}

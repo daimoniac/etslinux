@@ -1,0 +1,8 @@
+# KNX ETS license stick, VID:PID 2a07:0102.
+#
+# A stick attached through usbip/vhci-hcd shows up as root-only /dev/hidraw.
+# Wine then cannot open it, and ETS reports no dongle even though lsusb
+# lists the device. GROUP=plugdev is the grant that does not depend on a
+# seat tag. uaccess is additional, for the active session.
+SUBSYSTEM=="hidraw", ATTRS{idVendor}=="2a07", ATTRS{idProduct}=="0102", MODE="0660", GROUP="plugdev", TAG+="uaccess"
+SUBSYSTEM=="usb", ATTR{idVendor}=="2a07", ATTR{idProduct}=="0102", MODE="0660", GROUP="plugdev", TAG+="uaccess"

@@ -1,0 +1,136 @@
+# Agent runbook
+
+Reproduce this setup in order. Do not skip a checkpoint because a later
+installer returned exit code 0. Several of them do that when they have not
+installed anything.
+
+Do not commit a `.license` file, a `.env` file, broker passwords, or a dongle
+serial. Do not invent a license, a dongle emulator, or a registry patch whose
+purpose is to skip the license check. The stick is the license.
+
+Do not run `docker compose down` against a compose project this repository
+did not create. `make client-down` and `make server-down` are the only stop
+commands.
+
+## Order
+
+Run from the repository root. The prefix defaults to
+`~/.local/share/wineprefixes/ets5`. Override with `WINEPREFIX`.
+
+1. `make host` on the workstation. `make host-server` on the dongle host.
+2. `make prefix`
+3. `make dotnet`
+4. `make mscoree`
+5. `make fonts`
+6. `make ets ETS_SETUP=/absolute/path/to/Ets5Setup.exe`
+7. `make verify` and then `make verify-cctor`
+8. Attach the stick (`make server-up` and `make client-up`, or plug it in).
+9. `make launch`
+10. Optional: `make desktop`, `make probe`
+
+Each script is safe to re-run. They refuse to edit the prefix while
+`ETS5N.exe` is running. `ETS_REINSTALL=1` is required to run the ETS
+installer again once `ETS5.exe` exists.
+
+## Versions
+
+| Piece | Rule |
+|---|---|
+| Wine | `winehq-stable` when its candidate is >= 11.10, otherwise `winehq-devel`. 11.19 is the tested devel build. 11.0 is too old. |
+| Prefix | `WINEARCH=win64` only. These WineHQ packages are new WoW64 and have no i386 debs. |
+| .NET | 4.8 offline installer. Release value must be 528049 on both the native and Wow6432Node keys. |
+| ETS | 5.7.7, file version 5.7.1428.39779. The installer is a WiX Burn bundle the user supplies. It is not downloaded and not checksummed. |
+| RUDY | `ckware/rudy-server` and `ckware/rudy-client`, tag `2024-03-20-bookworm`, digest-pinned in the compose files. |
+| Stick | USB VID:PID `2a07:0102`. Do not pin a bus id. Do not put the serial in a file. |
+
+Microsoft download URLs and SHA-256 sums live in `scripts/lib.sh`. A mismatch
+is a failed download, not a warning.
+
+## Checkpoints
+
+| After | Pass |
+|---|---|
+| `make host` | `wine --version` is >= 11.10. `lsmod` shows `vhci_hcd` on the workstation or `usbip_host` on the dongle host. |
+| `make prefix` | `system.reg` contains `#arch=win64`. |
+| `make dotnet` | Both Release values are >= 528049, and the prefix then reports Windows 10. |
+| `make mscoree` | `file` on `system32/mscoree.dll` and `syswow64/mscoree.dll` does not say `for WINE`. `HKCU\Software\Wine\DllOverrides` has `mscoree=native`. Both InstallRoot values exist. |
+| `make verify` | The line `ok  32-bit CLR` and the program prints `CLR OK`. |
+| `make verify-cctor` | The line `cctor OK`. |
+| `make probe` | Built with `i686-w64-mingw32-gcc`. Under the prefix it prints `RESULT: dongle found via the full ETS enumeration chain` and `OPEN   : OK`. |
+| `make launch` | The ETS window is still mapped after the launching shell has exited. The status bar names the license tier. |
+
+`lsusb` listing `2a07:0102` is not one of these.
+
+## Pitfalls
+
+**.NET 4.8 on Windows 10 returns success and installs nothing.** Wine reports
+build 19045. The installer treats that as an OS that already contains 4.8.
+`scripts/20-dotnet.sh` switches the prefix to Windows 7 first and checks the
+Release key afterwards. If you run the installer by hand on Windows 10, a
+zero exit code is not evidence.
+
+**Wine's `mscoree.dll` is not .NET.** It is a builtin that says Wine Mono is
+not installed. The ETS bootstrapper then plans no packages and still exits 0.
+`scripts/30-mscoree.sh` copies Microsoft's DLL out of the .NET 4.0
+`netfx_Core` MSIs (the 4.8 tree does not replace this file), sets the
+`native` override, and sets InstallRoot. Without InstallRoot, `csc.exe`
+opens a dialog: "mscoree.dll could not be loaded... Please reinstall the
+.NET Framework." That dialog is stale if the CLR check already printed
+`CLR OK`.
+
+**COM registration is a second, separate failure.** After native `mscoree`
+is in place, `Knx.Ets.Ets5.App`'s static constructor throws
+`REGDB_E_KEYMISSING` (0x80040152) and then, once `InprocServer32` has a
+default, `REGDB_E_CLASSNOTREG` (0x80040154). The missing data is the .NET 4
+class registration, in particular each class's `Server` value. The 4.8
+installer does not write it. `scripts/import_dotnet40_com.py` imports the
+missing rows from those same MSIs. Re-running `make verify-cctor` is the
+test. Do not reinstall ETS to chase this.
+
+**The window flashes and the process is gone.** WPF calls
+`Environment.FailFast` from `TypefaceMap.MapUnresolvedCharacters` when font
+fallback names Segoe UI and the face is not installed. `make fonts` points
+those names at Carlito, Liberation Sans, and Droid Sans Fallback. Separately,
+`wine ETS5.exe` dies when its parent shell hangs up. `bin/ets5` uses
+`setsid`. Do not "fix" a flash by killing `wineserver` while an installer
+is still running; that aborts the installer. `wineserver -k` is only for
+after `winecfg -v`, which leaves `winedevice` holding the server open.
+
+**USB/IP.** `privileged: true` is required. AppArmor's `docker-default`
+profile denies `/sys` writes even as root in the container, and that write
+is how the device is bound. Compose rejects a bind path that contains a
+colon, so the server mounts `/sys/devices` rather than the PCI path of the
+stick. Load `usbip-host` before the first `make server-up`. Publish port
+3240 on a LAN address from `.env`, never on `0.0.0.0`. The udev rule is
+what lets the desktop user open `/dev/hidraw`; without it ETS says there
+is no dongle.
+
+**Do not attach the stick twice.** `rudy-client` owns the vhci port. A
+native `usbip attach` beside it will fight over the same device.
+
+**Installer scope.** `make ets` is a quiet Burn install. Confirm
+`drive_c/Program Files (x86)/ETS5/ETS5.exe` exists. The log is
+`drive_c/ets5-install.log` inside the prefix.
+
+## HID probe
+
+```sh
+sudo apt-get install -y gcc-mingw-w64-i686
+make probe
+WINEPREFIX=~/.local/share/wineprefixes/ets5 wine probe/hidparent-probe.exe
+```
+
+The program is a 32-bit PE, like `ETS5.exe`. `winegcc` is the wrong
+compiler here: it does not see `windows.h` in this layout. A parent id of
+`USB\VID_2A07&PID_0102\...` plus `OPEN : OK` means the kernel, udev, and
+Wine PnP path are fine. A later ETS failure is then COM, .NET, or the
+license UI, not USB.
+
+## MQTT
+
+Leave `MQTT_OPTIONS` empty unless a broker already exists. The value is the
+full `mosquitto_pub` option string, password included, so it stays in
+`.env`. The workstation and the dongle host use different users. Topic
+names are in `compose/*/mqtt.yml` and are selected automatically when
+`MQTT_OPTIONS` is non-empty. Without MQTT, restarting `rudy-server` leaves
+the client holding a dead attachment until `docker exec rudy-client reload`.

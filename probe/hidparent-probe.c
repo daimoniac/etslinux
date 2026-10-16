@@ -12,8 +12,8 @@
  * This is the chain broken by the CM_Get_Parent stub in WineHQ bug 59604
  * (fixed in Wine 11.10).
  *
- * Build: winegcc -mconsole -o hidparent-probe.exe hidparent-probe.c \
- *            -lsetupapi -lcfgmgr32 -lhid
+ * Build (32-bit PE, the way ETS itself is built):
+ *   i686-w64-mingw32-gcc -O2 -o hidparent-probe.exe hidparent-probe.c -lsetupapi -lcfgmgr32
  */
 #include <windows.h>
 #include <setupapi.h>

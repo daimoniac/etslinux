@@ -1,0 +1,36 @@
+#!/usr/bin/env bash
+# Start ETS5 in its own session. A normal `wine ETS5.exe` dies when the
+# terminal that launched it hangs up, which looks like the window flashing
+# for a second and then vanishing.
+. "$(dirname "$0")/../scripts/lib.sh"
+
+ets="$WINEPREFIX/drive_c/Program Files (x86)/ETS5/ETS5.exe"
+[ -f "$ets" ] || die "ETS is not installed in $WINEPREFIX"
+export DISPLAY="${DISPLAY:-:0}"
+if [ -z "${DISPLAY}" ] || ! [ -S /tmp/.X11-unix/X${DISPLAY#:} ]; then
+  die "no X display at DISPLAY=${DISPLAY:-empty}; ETS needs XWayland or X11"
+fi
+
+if pgrep -f 'ETS5N\.exe' >/dev/null 2>&1; then
+  printf 'ETS5 is already running\n'
+  exit 0
+fi
+
+if [ "${ETS_ALLOW_NO_DONGLE:-0}" != 1 ]; then
+  if ! lsusb -d "$DONGLE_VIDPID" 2>/dev/null | grep -q .; then
+    die "license stick $DONGLE_VIDPID is not attached (set ETS_ALLOW_NO_DONGLE=1 to start anyway)"
+  fi
+fi
+
+logdir=${XDG_STATE_HOME:-$HOME/.local/state}/ets5
+mkdir -p "$logdir"
+log=$logdir/ets5.log
+
+if [ -z "${ETS5_DETACHED:-}" ]; then
+  ETS5_DETACHED=1 setsid "$0" "$@" </dev/null >>"$log" 2>&1 &
+  printf 'ETS5 starting (pid %s). Log: %s\n' "$!" "$log"
+  exit 0
+fi
+
+cd "$WINEPREFIX/drive_c/Program Files (x86)/ETS5"
+exec wine ETS5.exe

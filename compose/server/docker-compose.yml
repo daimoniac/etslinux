@@ -1,0 +1,31 @@
+# Exports one USB device (the KNX ETS license stick) over USB/IP.
+#
+# Load usbip-host before the first start (scripts/00-host.sh server). If the
+# sysfs path is missing, Docker creates a directory and the bind is useless
+# until that directory is removed and the module is loaded.
+#
+# Bind USB/IP to a LAN address. This file has no default that listens on
+# every interface. /sys/devices is mounted whole because the device's real
+# sysfs path contains a PCI domain with a colon, and Compose rejects any
+# bind source that contains a colon.
+services:
+  rudy-server:
+    image: ckware/rudy-server:2024-03-20-bookworm@sha256:2ce904479fb7dfd3809699e66fcf040752b0b1ff4e8958de9f5d227ef79d8b90
+    container_name: rudy-server
+    init: true
+    restart: unless-stopped
+    privileged: true
+    ports:
+      - "${USBIP_BIND_ADDRESS:?set USBIP_BIND_ADDRESS to a LAN address}:3240:3240"
+    environment:
+      USBIP_DEVICE_IDS: ${USBIP_DEVICE_IDS:-2a07:0102}
+      TZ: ${TZ:-UTC}
+    volumes:
+      - /sys/bus/usb/drivers/usb:/sys/bus/usb/drivers/usb
+      - /sys/bus/usb/drivers/usbip-host:/sys/bus/usb/drivers/usbip-host
+      - /sys/devices:/sys/devices
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
