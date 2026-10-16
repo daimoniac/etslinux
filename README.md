@@ -91,14 +91,19 @@ commit it.
 
 ## Project file hashes
 
-ETS keeps a `.ets5hash` next to each hashed file in a ProjectStore directory.
-`scripts/ets5hash.py` recomputes it from `Proj/@Id` and `ProjInfo/@Guid` in
-the plaintext `P` file. `check` compares. `write` replaces the companion
-after the file itself has been edited. Close ETS first. The `.store` file
-is a separate check and is left alone.
+ETS 5 and ETS 6 keep a `.ets5hash` next to each hashed file in a ProjectStore
+directory. The suffix and the recipe are the same on both; ETS 6 still writes
+`.ets5hash`. `scripts/ets5hash.py` recomputes it from `Proj/@Id` and
+`ProjInfo/@Guid` in the plaintext `P` file. `check` compares. `write`
+replaces the companion after the file itself has been edited. Close ETS
+first. The `.store` file is a separate check and is left alone.
+
+Checked by editing a project, re-signing it, and opening it again in
+ETS 5.7.7 and in ETS 6.4.1.
 
 ```sh
 scripts/ets5hash.py check ~/.local/share/wineprefixes/ets5/drive_c/ProgramData/KNX/ETS5/ProjectStore/P-XXXX
+scripts/ets5hash.py check ~/.local/share/wineprefixes/ets6/drive_c/ProgramData/KNX/ETS6/ProjectStore/P-XXXX
 scripts/ets5hash.py write ~/.local/share/wineprefixes/ets5/drive_c/ProgramData/KNX/ETS5/ProjectStore/P-XXXX
 ```
 
@@ -117,7 +122,7 @@ scripts/ets5hash.py write ~/.local/share/wineprefixes/ets5/drive_c/ProgramData/K
 | `compose/client` | `rudy-client` |
 | `compose/server` | `rudy-server` |
 | `probe/hidparent-probe.c` | HID parent-chain probe |
-| `scripts/ets5hash.py` | Recompute ProjectStore `.ets5hash` files |
+| `scripts/ets5hash.py` | Recompute ProjectStore `.ets5hash` files (ETS 5 and 6) |
 
 `AGENTS.md` is the runbook for repeating this unattended, including the
 failures that look like success.

@@ -1,5 +1,8 @@
 #!/usr/bin/env python3
-"""Recompute ETS5 ProjectStore .ets5hash companions.
+"""Recompute ETS ProjectStore .ets5hash companions.
+
+ETS 5 and ETS 6 use the same suffix and the same recipe. ETS 6 still
+writes the companion as .ets5hash.
 
 Each hashed file is SHA-1 of its bytes, then every byte is increased by 41
 (mod 256), then XORed with the project mask: the mask's high byte on even
