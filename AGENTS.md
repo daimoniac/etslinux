@@ -89,13 +89,19 @@ installer does not write it. `scripts/import_dotnet40_com.py` imports the
 missing rows from those same MSIs. Re-running `make verify-cctor` is the
 test. Do not reinstall ETS to chase this.
 
-**Menus and tooltips are black rectangles.** Both are layered windows.
-With a compositor in front (this machine's KDE session, through
-XWayland) Wine's shaped ARGB path fills them black, and the text is
-black as well. `make fonts` sets `ShapeLayeredWindows` to `N` under
-`HKCU\Software\Wine\X11 Driver`, so those popups are ordinary windows
-with the light menu and tooltip colors. The prefix has to be restarted
-before an already-running ETS sees it.
+**Menus and tooltips are black rectangles.** Two separate causes, both
+fixed by `make fonts`. Plain Win32 layered windows (classic tooltips,
+`TrackPopupMenu`) come out solid black under a compositor (this
+machine's KDE session, through XWayland) because of Wine's XShape-based
+layering; setting `ShapeLayeredWindows` to `N` under
+`HKCU\Software\Wine\X11 Driver` fixes those. ETS5's own menus and
+tooltips are WPF `Popup` controls, which render through a completely
+different path (Avalon's Direct3D-backed compositing) and are
+unaffected by that setting — they stay black until WPF's hardware
+acceleration is disabled with `DisableHWAcceleration` (REG_DWORD, `1`)
+under `HKCU\Software\Microsoft\Avalon.Graphics`, which forces WPF onto
+its CPU software rasterizer (Wine bug 49055). The prefix has to be
+restarted before an already-running ETS sees either change.
 
 **The window flashes and the process is gone.** WPF calls
 `Environment.FailFast` from `TypefaceMap.MapUnresolvedCharacters` when font

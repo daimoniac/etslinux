@@ -34,9 +34,16 @@ done
 rm -rf "$WINEPREFIX/drive_c/users/$USER/AppData/Local/Microsoft/FontCache" \
        "$WINEPREFIX/drive_c/users/$USER/AppData/Local/FontCache" || true
 
-# Menus and tooltips are layered windows. Under a compositor Wine draws
-# those with a shaped ARGB window, which comes out solid black, and the
-# text on them is black too. Ordinary windows use the light menu and
-# tooltip colors instead.
+# Plain Win32 layered windows (classic tooltips, TrackPopupMenu) come out
+# solid black under a compositor unless Wine is told to skip XShape and
+# use a real ARGB window instead.
 wine reg add 'HKCU\Software\Wine\X11 Driver' /v ShapeLayeredWindows /d N /f >/dev/null
+
+# ETS5's own menus and tooltips are WPF Popup controls, which render through
+# a different path (Avalon/Direct3D) than the Win32 layered windows above.
+# Wine's Direct3D-backed WPF compositing comes out solid black here too, so
+# WPF has to fall back to its CPU software rasterizer instead. See Wine bug
+# 49055.
+wine reg add 'HKCU\Software\Microsoft\Avalon.Graphics' /v DisableHWAcceleration /t REG_DWORD /d 1 /f >/dev/null
+
 printf 'font fallback registered\n'
