@@ -40,8 +40,8 @@ as_root() {
 }
 
 refuse_if_ets_running() {
-  if pgrep -f 'ETS5N\.exe' >/dev/null 2>&1; then
-    die "ETS5 is running. Close it before changing the Wine prefix."
+  if pgrep -f 'ETS[56]N?\.exe' >/dev/null 2>&1; then
+    die "ETS is running. Close it before changing the Wine prefix."
   fi
 }
 

@@ -61,10 +61,13 @@ else
 fi
 
 ets="$drive/Program Files (x86)/ETS5/ETS5.exe"
+ets6="$drive/Program Files (x86)/ETS6/ETS6.exe"
 if [ -f "$ets" ]; then
   ok "ETS5.exe present"
+elif [ -f "$ets6" ]; then
+  ok "ETS6.exe present"
 else
-  bad "ETS5.exe is not installed"
+  bad "neither ETS5.exe nor ETS6.exe is installed"
 fi
 
 if [ "${1:-}" = "--cctor" ]; then

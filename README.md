@@ -1,17 +1,19 @@
-# ETS5 on Linux
+# ETS on Linux
 
 ![ETS 5.7 on Ubuntu: the application menu, the panel icon, and an open project](docs/ets5-on-linux.png)
 
-Run KNX ETS 5.7 under Wine, with the license stick either plugged into this
-machine or forwarded from another Linux host over USB/IP ([RUDY](https://github.com/ckware/rudy)).
+Run KNX ETS 5 or ETS 6 under Wine, with the license stick either plugged into
+this machine or forwarded from another Linux host over USB/IP
+([RUDY](https://github.com/ckware/rudy)).
 
-This repository installs nothing from KNX. You bring `Ets5Setup.exe` and the
-physical license stick. The scripts download only the Microsoft .NET
-redistributables they need, and they check those downloads.
+This repository installs nothing from KNX. You bring `Ets5Setup.exe` or
+`Ets6Setup.exe` and the physical license stick. The scripts download only the
+Microsoft .NET redistributables they need, and they check those downloads.
 
-Tested on Ubuntu 26.04 with Wine 11.19 and ETS 5.7.7 (file version
-5.7.1428.39779). Wine must be at least 11.10. Older Wine cannot walk from
-the HID interface to the USB parent device, so ETS never sees the stick
+Tested on Ubuntu 26.04 with Wine 11.19, ETS 5.7.7 (file version
+5.7.1428.39779), and ETS 6.4.1 (file version 6.4.8718.0). Wine must be at
+least 11.10. Older Wine cannot walk from the HID interface to the USB parent
+device, so ETS never sees the stick
 ([WineHQ bug 59604](https://bugs.winehq.org/show_bug.cgi?id=59604)).
 
 ## Workstation
@@ -29,10 +31,26 @@ make desktop       # optional application-menu entry
 make launch
 ```
 
-`make launch` starts ETS in its own session. Closing the terminal must not
+`make launch` starts ETS 5 in its own session. Closing the terminal must not
 close ETS. The window is up for real when the status bar names the license
 tier that belongs to the stick, for example `ETS5 Lite`. `lsusb` showing
 `2a07:0102` is only the transport.
+
+## ETS 6
+
+ETS 6.4.1 is the same WiX Burn bundle and the same 32-bit .NET 4.8 program.
+Give it its own prefix so it does not share the ETS 5 one:
+
+```sh
+export WINEPREFIX=~/.local/share/wineprefixes/ets6
+make prefix dotnet mscoree fonts
+make ets ETS_SETUP=/path/to/Ets6Setup.exe
+make verify
+```
+
+The installer name selects the product directory (`ETS6` for `Ets6Setup.exe`).
+Set `ETS_MAJOR=6` if the file has been renamed. `make launch` and
+`make desktop` still start ETS 5.
 
 Log out and back in once after `make host` if it added your user to `plugdev`.
 

@@ -22,15 +22,16 @@ Run from the repository root. The prefix defaults to
 3. `make dotnet`
 4. `make mscoree`
 5. `make fonts`
-6. `make ets ETS_SETUP=/absolute/path/to/Ets5Setup.exe`
+6. `make ets ETS_SETUP=/absolute/path/to/Ets5Setup.exe` (or `Ets6Setup.exe` in its own prefix)
 7. `make verify` and then `make verify-cctor`
 8. Attach the stick (`make server-up` and `make client-up`, or plug it in).
 9. `make launch`
 10. Optional: `make desktop`, `make probe`
 
 Each script is safe to re-run. They refuse to edit the prefix while
-`ETS5N.exe` is running. `ETS_REINSTALL=1` is required to run the ETS
-installer again once `ETS5.exe` exists.
+`ETS5N.exe` or `ETS6N.exe` is running. `ETS_REINSTALL=1` is required to run
+the installer again once `ETS5.exe` or `ETS6.exe` exists. ETS 6 goes in
+`~/.local/share/wineprefixes/ets6`; the default prefix stays the ETS 5 one.
 
 ## Versions
 
@@ -39,7 +40,7 @@ installer again once `ETS5.exe` exists.
 | Wine | `winehq-stable` when its candidate is >= 11.10, otherwise `winehq-devel`. 11.19 is the tested devel build. 11.0 is too old. |
 | Prefix | `WINEARCH=win64` only. These WineHQ packages are new WoW64 and have no i386 debs. |
 | .NET | 4.8 offline installer. Release value must be 528049 on both the native and Wow6432Node keys. |
-| ETS | 5.7.7, file version 5.7.1428.39779. The installer is a WiX Burn bundle the user supplies. It is not downloaded and not checksummed. |
+| ETS | 5.7.7 (file version 5.7.1428.39779) and 6.4.1 (file version 6.4.8718.0). Both installers are WiX Burn bundles the user supplies. They are not downloaded and not checksummed. |
 | RUDY | `ckware/rudy-server` and `ckware/rudy-client`, tag `2024-03-20-bookworm`, digest-pinned in the compose files. |
 | Stick | USB VID:PID `2a07:0102`. Do not pin a bus id. Do not put the serial in a file. |
 
