@@ -45,13 +45,22 @@ refuse_if_ets_running() {
   fi
 }
 
+# Parsed, not sourced. Compose accepts an unquoted value containing spaces,
+# and MQTT_OPTIONS is one; the shell would read that as a command name.
+# One layer of matching quotes is removed, which is what Compose does too.
 load_env() {
-  if [ -f "$ROOT/.env" ]; then
-    set -a
-    # shellcheck disable=SC1091
-    . "$ROOT/.env"
-    set +a
-  fi
+  local file=$ROOT/.env line key value
+  [ -f "$file" ] || return 0
+  while IFS= read -r line || [ -n "$line" ]; do
+    [[ $line =~ ^[[:space:]]*(export[[:space:]]+)?([A-Za-z_][A-Za-z0-9_]*)[[:space:]]*=(.*)$ ]] || continue
+    key=${BASH_REMATCH[2]}
+    value=${BASH_REMATCH[3]}
+    value=${value%$'\r'}
+    if [[ $value =~ ^\"(.*)\"$ ]] || [[ $value =~ ^\'(.*)\'$ ]]; then
+      value=${BASH_REMATCH[1]}
+    fi
+    export "$key=$value"
+  done < "$file"
 }
 
 wine_version_number() {
