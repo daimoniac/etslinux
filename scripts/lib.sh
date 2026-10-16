@@ -63,6 +63,33 @@ load_env() {
   done < "$file"
 }
 
+# WineHQ keeps the real binaries in /opt/wine-*/bin. /usr/bin/wine is only
+# a symlink, and apt deletes it when it removes a distro wine package in
+# the same transaction that installs WineHQ.
+wine_bindir() {
+  local dir
+  if command -v wine >/dev/null 2>&1; then
+    dirname "$(command -v wine)"
+    return 0
+  fi
+  for dir in /opt/wine-stable/bin /opt/wine-devel/bin; do
+    if [ -x "$dir/wine" ]; then
+      printf '%s\n' "$dir"
+      return 0
+    fi
+  done
+  return 1
+}
+
+prepend_wine_path() {
+  local dir
+  dir=$(wine_bindir) || return 1
+  case ":$PATH:" in
+    *":$dir:"*) ;;
+    *) export PATH="$dir:$PATH" ;;
+  esac
+}
+
 wine_version_number() {
   local raw
   raw=$(wine --version 2>/dev/null | awk '{print $1}')

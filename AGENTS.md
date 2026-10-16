@@ -89,6 +89,14 @@ installer does not write it. `scripts/import_dotnet40_com.py` imports the
 missing rows from those same MSIs. Re-running `make verify-cctor` is the
 test. Do not reinstall ETS to chase this.
 
+**Menus and tooltips are black rectangles.** Both are layered windows.
+With a compositor in front (this machine's KDE session, through
+XWayland) Wine's shaped ARGB path fills them black, and the text is
+black as well. `make fonts` sets `ShapeLayeredWindows` to `N` under
+`HKCU\Software\Wine\X11 Driver`, so those popups are ordinary windows
+with the light menu and tooltip colors. The prefix has to be restarted
+before an already-running ETS sees it.
+
 **The window flashes and the process is gone.** WPF calls
 `Environment.FailFast` from `TypefaceMap.MapUnresolvedCharacters` when font
 fallback names Segoe UI and the face is not installed. `make fonts` points

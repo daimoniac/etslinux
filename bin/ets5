@@ -11,6 +11,8 @@ if [ -z "${DISPLAY}" ] || ! [ -S /tmp/.X11-unix/X${DISPLAY#:} ]; then
   die "no X display at DISPLAY=${DISPLAY:-empty}; ETS needs XWayland or X11"
 fi
 
+prepend_wine_path || die "wine is not installed (run scripts/00-host.sh client)"
+
 if pgrep -f 'ETS5N\.exe' >/dev/null 2>&1; then
   printf 'ETS5 is already running\n'
   exit 0

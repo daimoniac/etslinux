@@ -33,4 +33,10 @@ done
 
 rm -rf "$WINEPREFIX/drive_c/users/$USER/AppData/Local/Microsoft/FontCache" \
        "$WINEPREFIX/drive_c/users/$USER/AppData/Local/FontCache" || true
+
+# Menus and tooltips are layered windows. Under a compositor Wine draws
+# those with a shaped ARGB window, which comes out solid black, and the
+# text on them is black too. Ordinary windows use the light menu and
+# tooltip colors instead.
+wine reg add 'HKCU\Software\Wine\X11 Driver' /v ShapeLayeredWindows /d N /f >/dev/null
 printf 'font fallback registered\n'

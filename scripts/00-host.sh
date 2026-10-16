@@ -55,6 +55,17 @@ EOF
   as_root apt-get install -y "$pkg" p7zip-full msitools cabextract file python3 \
     fonts-droid-fallback fonts-liberation fonts-crosextra-carlito
 
+  case "$pkg" in
+    winehq-stable) optbin=/opt/wine-stable/bin ;;
+    *) optbin=/opt/wine-devel/bin ;;
+  esac
+  if [ -x "$optbin/wine" ] && [ ! -e /usr/bin/wine ]; then
+    for cmd in wine wineboot wineserver winecfg; do
+      [ -x "$optbin/$cmd" ] || continue
+      as_root ln -s "$optbin/$cmd" "/usr/bin/$cmd"
+    done
+  fi
+  prepend_wine_path || die "wine is not installed"
   if ! wine_is_new_enough; then
     die "installed Wine $(wine_version_number) is older than $WINE_MIN_VERSION"
   fi
