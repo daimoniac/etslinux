@@ -116,6 +116,12 @@ ClearType, because WPF's grayscale smoothing makes small labels look
 blurry at 1.2. Bitmap icons stay slightly soft at any non-integer
 factor; that is not fixable from the prefix.
 
+**The panel shows a blank page for ETS.** The window class is `ets5n.exe`.
+Wine's menu entry says `ets5.exe`, so the panel has no icon to use, and the
+SVG alone is not used at panel size. `make desktop` copies Wine's extracted
+PNGs to `ets5.png`, points both entries at `ets5n.exe`, and adds a
+`NoDisplay` file named `ets5n.exe.desktop` for the Wayland app id.
+
 **The window flashes and the process is gone.** WPF calls
 `Environment.FailFast` from `TypefaceMap.MapUnresolvedCharacters` when font
 fallback names Segoe UI and the face is not installed. `make fonts` points
