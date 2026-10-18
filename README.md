@@ -82,10 +82,12 @@ you then run `docker exec rudy-client reload` yourself.
 Some Application Programs still ship an ETS3-style "Baggage" plugin (for
 example a `FastDownload.dll`) rather than talking to ETS5/6 directly. Those
 need `EIBA.Interop.EtecDOM` and friends, ETS's own ETS3 compatibility layer,
-which the installer caches but does not place on disk. `make eibasc`
-installs it from that cache. Skip it until a download fails with
-`The type initializer for 'wx' threw an exception` and an `EtecRedirection`
-error in the ETS log; see `AGENTS.md` for the full chain.
+which the installer caches in a side MSI but never places on disk, even via
+`wine msiexec /i` run against it directly. `make eibasc` extracts it from
+that cached MSI instead and proves the result loads under the CLR. Skip it
+until a download fails with `The type initializer for 'wx' threw an
+exception` and an `EtecRedirection` error in the ETS log; see `AGENTS.md`
+for the full chain.
 
 ## What success looks like
 
