@@ -1,7 +1,7 @@
 ROOT := $(abspath $(dir $(lastword $(MAKEFILE_LIST))))
 export WINEPREFIX ?= $(HOME)/.local/share/wineprefixes/ets5
 
-.PHONY: all host host-server prefix dotnet mscoree fonts ets verify verify-cctor \
+.PHONY: all host host-server prefix dotnet mscoree fonts ets eibasc verify verify-cctor \
 	launch desktop client-up client-down server-up server-down probe check
 
 all: host prefix dotnet mscoree fonts
@@ -26,6 +26,9 @@ fonts: prefix
 
 ets: mscoree fonts
 	$(ROOT)/scripts/50-ets.sh "$(ETS_SETUP)"
+
+eibasc:
+	$(ROOT)/scripts/35-eibasc.sh
 
 verify:
 	$(ROOT)/scripts/60-verify.sh

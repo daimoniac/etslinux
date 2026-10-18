@@ -23,6 +23,8 @@ Run from the repository root. The prefix defaults to
 4. `make mscoree`
 5. `make fonts`
 6. `make ets ETS_SETUP=/absolute/path/to/Ets5Setup.exe` (or `Ets6Setup.exe` in its own prefix)
+6a. `make eibasc`, optional, only needed to download a device whose Application
+    Program ships an ETS3-style Baggage plugin (see Pitfalls)
 7. `make verify` and then `make verify-cctor`
 8. Attach the stick (`make server-up` and `make client-up`, or plug it in).
 9. `make launch`
@@ -57,6 +59,7 @@ is a failed download, not a warning.
 | `make mscoree` | `file` on `system32/mscoree.dll` and `syswow64/mscoree.dll` does not say `for WINE`. `HKCU\Software\Wine\DllOverrides` has `mscoree=native`. Both InstallRoot values exist. |
 | `make verify` | The line `ok  32-bit CLR` and the program prints `CLR OK`. |
 | `make verify-cctor` | The line `cctor OK`. |
+| `make eibasc` | `Common Files\EIBA sc\EIBA.Interop.EtecDOM.dll` exists; the script also reports how many GAC copies landed. |
 | `make probe` | Built with `i686-w64-mingw32-gcc`. Under the prefix it prints `RESULT: dongle found via the full ETS enumeration chain` and `OPEN   : OK`. |
 | `make launch` | The ETS window is still mapped after the launching shell has exited. The status bar names the license tier. |
 
@@ -89,6 +92,29 @@ class registration, in particular each class's `Server` value. The 4.8
 installer does not write it. `scripts/import_dotnet40_com.py` imports the
 missing rows from those same MSIs. Re-running `make verify-cctor` is the
 test. Do not reinstall ETS to chase this.
+
+**A device download fails with "The type initializer for 'wx' threw an
+exception" and the ETS log blames EtecRedirection with
+`Resource name not found (0x80070716)`.** The Application Program for that
+device ships an ETS3-style "Baggage" plugin (for example `FastDownload.dll`,
+visible only as `BFastDownload.dll` under the ProjectStore and briefly as
+plain `FastDownload.dll` under
+`AppData\Local\Temp\KNX\CvNext\<guid>\<manufacturer>\Baggages\`). Loading it
+needs `EIBA.Interop.EtecDOM` (and `EtecFwk`/`EtecHawk`), the .NET side of
+ETS's ETS3 compatibility layer, which the ETS5 Burn bundle carries as its own
+side MSI, "KNX ETS5 Compatibility Components"
+(`{070C17B5-D0DB-443A-9504-0AF04FE91F1E}`, cached under
+`drive_c/windows/Installer/*.msi`). That MSI registers itself as installed,
+but its one feature is left advertised: no
+`Common Files\EIBA sc\EIBA.Interop.EtecDOM.dll`, no GAC copies of the older
+`EIBA.Interop.*` versions some plugins pin to, no CLSID registration. ETS
+only reaches for those on demand, through Windows Installer's self-heal
+path, and that path is what returns 0x80070716 under Wine. `make ets`
+alone does not install this feature; `scripts/35-eibasc.sh` runs `msiexec
+/i` against the same cached MSI directly (not through self-heal), which does
+place the files, the GAC entries, and the registry keys. Without it, ETS
+never gets as far as the device's application, so there is no partial
+download and no group monitor traffic for that device either.
 
 **Menus and tooltips are black rectangles.** Two separate causes, both
 fixed by `make fonts`. Plain Win32 layered windows (classic tooltips,

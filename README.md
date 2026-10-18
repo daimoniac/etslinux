@@ -26,6 +26,7 @@ make dotnet        # .NET Framework 4.8
 make mscoree       # native mscoree and COM registration
 make fonts
 make ets ETS_SETUP=/path/to/Ets5Setup.exe
+make eibasc         # optional: ETS3 Baggage-plugin compatibility layer
 make verify
 make desktop       # optional application-menu entry
 make launch
@@ -76,6 +77,16 @@ MQTT is optional. Set `MQTT_OPTIONS` in each machine's own `.env` (different
 broker users). Empty means USB/IP without self-heal: after a server restart
 you then run `docker exec rudy-client reload` yourself.
 
+## ETS3-era devices
+
+Some Application Programs still ship an ETS3-style "Baggage" plugin (for
+example a `FastDownload.dll`) rather than talking to ETS5/6 directly. Those
+need `EIBA.Interop.EtecDOM` and friends, ETS's own ETS3 compatibility layer,
+which the installer caches but does not place on disk. `make eibasc`
+installs it from that cache. Skip it until a download fails with
+`The type initializer for 'wx' threw an exception` and an `EtecRedirection`
+error in the ETS log; see `AGENTS.md` for the full chain.
+
 ## What success looks like
 
 `make verify` checks Wine, the prefix, .NET 4.8, native `mscoree`, and a
@@ -117,6 +128,7 @@ scripts/ets5hash.py write ~/.local/share/wineprefixes/ets5/drive_c/ProgramData/K
 | `scripts/30-mscoree.sh` | Microsoft `mscoree.dll` and COM keys |
 | `scripts/40-fonts.sh` | WPF font fallback |
 | `scripts/50-ets.sh` | ETS installer |
+| `scripts/35-eibasc.sh` | ETS3 Baggage-plugin compatibility layer (`EIBA.Interop.EtecDOM` and friends), optional |
 | `scripts/60-verify.sh` | Checkpoints |
 | `bin/ets5` | Detached launcher |
 | `compose/client` | `rudy-client` |
