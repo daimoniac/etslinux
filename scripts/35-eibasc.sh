@@ -25,11 +25,18 @@
 # application directory, not Common Files\EIBA sc, so the same DLLs also
 # have to sit next to ETS5.exe. There is no Class table entry and no GAC
 # component for this version; a copy is enough.
+#
+# EtecDOM.dll still refuses CoCreate after that. Its ATL object map is
+# filled by native C++ static constructors, and Wine's load through
+# mscoree!_CorDllMain never runs them, so DllGetClassObject returns
+# E_UNEXPECTED. patch_etecdom_atl redirects one call inside the ETS
+# 5.7.1428 DLL so the first class lookup fills the map.
 . "$(dirname "$0")/lib.sh"
 
 need_cmd wine
 need_cmd msiinfo
 need_cmd msiextract
+need_cmd python3
 refuse_if_ets_running
 
 drive="$WINEPREFIX/drive_c"
@@ -47,11 +54,55 @@ for major in 5 6; do
 done
 [ -n "$ets_dir" ] || die "EtecRedirect.dll not found under Program Files (x86)/ETS5 or ETS6"
 
+# EtecDOM.dll is a mixed native/C++/CLI COM server. Its DllGetClassObject
+# walks an ATL object map whose cbSize stays 0: Wine loads the DLL through
+# mscoree's _CorDllMain and the native C++ static constructors that would
+# fill that map never run, so every CoCreate (DomRoot, EagleDomPersist, …)
+# comes back E_UNEXPECTED (0x8000FFFF). ConstructEtecDomObjectModel then
+# cannot build the DOM and the download dies. The bytes below are specific
+# to the EtecDOM.dll shipped with ETS 5.7.1428: DllGetClassObject's call to
+# the class lookup at RVA 0x2D293 (file offset 0x2C693, original e8 b0 fa fe
+# ff) is redirected at a code cave in the .text padding (RVA 0x895B0). The
+# cave fills cbSize, the object-map bounds and the critical section once,
+# then jumps to the original lookup. A different ETS build will not match
+# these bytes and the script stops instead of patching blindly.
+patch_etecdom_atl() {
+  local dll="$ets_dir/EtecDOM.dll"
+  [ -f "$dll" ] || die "EtecDOM.dll missing from $ets_dir"
+  python3 - "$dll" <<'PY'
+import sys
+path = sys.argv[1]
+data = bytearray(open(path, "rb").read())
+def off(rva):
+    return 0x400 + (rva - 0x1000)
+call_off = off(0x2D293)
+cave_off = off(0x895B0)
+hook = bytes.fromhex("e818c30500")
+orig = bytes.fromhex("e8b0fafeff")
+cave = bytes.fromhex(
+    "e800000000582db595080083b8f4631400007537c780f46314002c000000"
+    "8980f86314008d88444f12008988fc6314008d8810511200898800641400"
+    "8d88046414006a0051ff909cb00800e94837f9ff"
+)
+cur = bytes(data[call_off:call_off + 5])
+if cur == hook and bytes(data[cave_off:cave_off + len(cave)]) == cave:
+    print("EtecDOM.dll ATL init already patched")
+    sys.exit(0)
+if cur != orig or any(data[cave_off:cave_off + len(cave)]):
+    sys.exit("EtecDOM.dll is not the ETS 5.7.1428 build this patch knows; refusing to modify it")
+data[cave_off:cave_off + len(cave)] = cave
+data[call_off:call_off + 5] = hook
+open(path, "wb").write(data)
+print("patched EtecDOM.dll so DllGetClassObject initializes the ATL object map")
+PY
+}
+
 marker="$eiba_dir/EIBA.Interop.EtecDOM.dll"
 manifest="$ets_dir/EtecRedirect.dll.manifest"
 app_copy="$ets_dir/EIBA.Interop.EtecDOM.dll"
 if [ -f "$marker" ] && [ -f "$manifest" ] && [ -f "$app_copy" ] \
    && [ "${ETS5_EIBASC_REINSTALL:-0}" != 1 ]; then
+  patch_etecdom_atl
   printf 'EIBAsc compatibility layer already present, skipping (set ETS5_EIBASC_REINSTALL=1 to run it again)\n'
   exit 0
 fi
@@ -177,6 +228,8 @@ cat > "$manifest" <<'EOF'
   </dependency>
 </assembly>
 EOF
+
+patch_etecdom_atl
 
 printf 'installed %s file(s) into %s\n' "$copied" "$eiba_dir"
 printf 'and EtecRedirect.dll.manifest plus the Interop assemblies into %s\n' "$ets_dir"

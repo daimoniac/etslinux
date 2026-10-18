@@ -120,7 +120,18 @@ Fusion then loads `EIBA.Interop.EtecDOM` 1.0.3135.0 by strong name from
 the ETS application directory, not from `Common Files\EIBA sc`, so the
 script copies the Interop assemblies there too. The ETS log is
 `AppData\Local\KNX\ETS5\Log\ETS5.log`. Without this, ETS never gets as
-far as the device's application.
+far as the device's application. The next failure, once the plugin itself
+loads, is inside `ConstructEtecDomObjectModel`: it CoCreates `DomRoot`
+(`{6039BD3D-A8AC-11D4-B36F-00104B091E6B}`) and then `EagleDomPersist`
+(`{4C846FA7-1BC6-4023-9CAC-EE57191A9B11}`) out of `EtecDOM.dll`. That DLL's
+`DllGetClassObject` returns `E_UNEXPECTED` (0x8000FFFF) because its ATL
+object map stays at `cbSize == 0`. Wine loads the mixed DLL through
+`mscoree!_CorDllMain` and never runs the native C++ static constructors
+that would fill the map. The download then dies with
+`Value cannot be null. Parameter name: type` from `Activator.CreateInstance`.
+`scripts/35-eibasc.sh` patches this exact `EtecDOM.dll` (ETS 5.7.1428) so
+the class lookup initializes the map on first use. A different ETS build
+does not match the patched bytes and the script refuses to touch the DLL.
 
 **Menus and tooltips are black rectangles.** Two separate causes, both
 fixed by `make fonts`. Plain Win32 layered windows (classic tooltips,
