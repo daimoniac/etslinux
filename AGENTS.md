@@ -59,7 +59,7 @@ is a failed download, not a warning.
 | `make mscoree` | `file` on `system32/mscoree.dll` and `syswow64/mscoree.dll` does not say `for WINE`. `HKCU\Software\Wine\DllOverrides` has `mscoree=native`. Both InstallRoot values exist. |
 | `make verify` | The line `ok  32-bit CLR` and the program prints `CLR OK`. |
 | `make verify-cctor` | The line `cctor OK`. |
-| `make eibasc` | `Common Files\EIBA sc\EIBA.Interop.EtecDOM.dll` exists; the script also reports how many GAC copies landed. |
+| `make eibasc` | `Common Files\EIBA sc\EIBA.Interop.EtecDOM.dll`, `ETS5\EtecRedirect.dll.manifest`, and `ETS5\EIBA.Interop.EtecDOM.dll` all exist. |
 | `make probe` | Built with `i686-w64-mingw32-gcc`. Under the prefix it prints `RESULT: dongle found via the full ETS enumeration chain` and `OPEN   : OK`. |
 | `make launch` | The ETS window is still mapped after the launching shell has exited. The status bar names the license tier. |
 
@@ -105,24 +105,22 @@ ETS's ETS3 compatibility layer, which the ETS5 Burn bundle carries as its own
 MSI, "KNX ETS5 Compatibility Components"
 (`{070C17B5-D0DB-443A-9504-0AF04FE91F1E}`, built from WiX merge modules,
 cached under `drive_c/windows/Installer/*.msi`). That MSI registers itself
-as installed, but nothing it owns actually lands on disk: no
-`Common Files\EIBA sc\EIBA.Interop.EtecDOM.dll`, no CLSID registration. ETS
-only reaches for the missing assembly on demand, through Windows Installer's
-self-heal path, and that path is what returns 0x80070716 under Wine.
-`wine msiexec /i` against the very same cached MSI also "succeeds" and still
-writes nothing — its `InstallExecuteSequence` runs under Wine's own
-`msi.dll` without placing a single file, the same silent-success pattern as
-other installers in this runbook. `scripts/35-eibasc.sh` instead pulls the
-files straight out of the MSI's embedded cabinet with `msiextract`, the same
-way `scripts/30-mscoree.sh` pulls `mscoree.dll` out of the .NET 4.0
-redistributable, and then proves each one loads under the 32-bit CLR before
-calling it done. (The MSI also carries five older `EIBA.Interop.*` versions
-some genuinely ancient ETS3 plugins pin to by exact strong name; those are
-meant for the GAC, collapse onto one filename per version under plain
-extraction, and are not recovered by this script — only the current version
-ETS actually asked for.) Without this, ETS never gets as far as the
-device's application, so there is no partial download and no group monitor
-traffic for that device either.
+as installed, but nothing it owns actually lands on disk.
+`wine msiexec /i` against the cached MSI also "succeeds" and still writes
+nothing — its `InstallExecuteSequence` runs under Wine's own `msi.dll`
+without placing a single file. `scripts/35-eibasc.sh` pulls the files out
+of the cabinet with `msiextract` instead. That alone is not enough. The
+0x80070716 comes from `CreateActCtx` inside
+`EtecRedirection`'s static constructor: it asks `EtecRedirect.dll` for
+manifest resource 1, the DLL only contains resource 2, and the sidecar
+`EtecRedirect.dll.manifest` (the fallback both Windows and Wine use for
+resource 1) was never installed. The script writes that sidecar so the
+context resolves `EtecFwk`, `EtecDom`, `Hawk`, `EtecCtrl` and `Falcon`.
+Fusion then loads `EIBA.Interop.EtecDOM` 1.0.3135.0 by strong name from
+the ETS application directory, not from `Common Files\EIBA sc`, so the
+script copies the Interop assemblies there too. The ETS log is
+`AppData\Local\KNX\ETS5\Log\ETS5.log`. Without this, ETS never gets as
+far as the device's application.
 
 **Menus and tooltips are black rectangles.** Two separate causes, both
 fixed by `make fonts`. Plain Win32 layered windows (classic tooltips,

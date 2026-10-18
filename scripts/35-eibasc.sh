@@ -6,25 +6,25 @@
 #
 # The ETS5 Burn bundle carries this as its own MSI (ProductName "KNX ETS5
 # Compatibility Components", ProductCode
-# {070C17B5-D0DB-443A-9504-0AF04FE91F1E}, built from WiX merge modules: its
-# File/Component names carry the merge module GUID
-# 77626993-DC40-4398-ADFC-4D62EC96B3C0). That MSI ends up registered as
-# installed, but nothing it owns is actually on disk: no
-# EIBA.Interop.EtecDOM.dll under Common Files\EIBA sc, no CLSID
-# registration. `wine msiexec /i` against the very same cached MSI "succeeds"
-# (exit 0) and still writes nothing; its InstallExecuteSequence runs under
-# Wine's own msi.dll without placing a single file. ETS reaches for the
-# missing assembly lazily, through Windows Installer's self-heal path (what
-# the ETS log calls EtecRedirection), and that returns
-# ERROR_RESOURCE_NAME_NOT_FOUND (0x80070716).
+# {070C17B5-D0DB-443A-9504-0AF04FE91F1E}). That MSI registers as installed,
+# but its files never land on disk: `wine msiexec /i` exits 0 and writes
+# nothing. Two further gaps stay even after the files are extracted.
 #
-# Pulling the files directly out of the MSI's embedded cabinet, the way
-# scripts/30-mscoree.sh pulls mscoree.dll out of the .NET 4.0 redistributable,
-# does work. The MsiAssembly table says these particular files (unlike the
-# older EIBA.Interop.* versions also in this MSI, kept for plugins pinned to
-# an exact old strong name) are a plain application-local component, not a
-# GAC one: there is no SelfReg and no Class table entry for them, so a CLSID
-# registration step is not needed, only the files.
+# Knx.Ets.Compatibility.Impl.EtecRedirection's static constructor calls
+# CreateActCtx on EtecRedirect.dll, manifest resource 1. The DLL only has
+# resource 2 (a plain asInvoker manifest). Windows and Wine then look for
+# the sidecar EtecRedirect.dll.manifest, which the installer also does not
+# ship, and return ERROR_RESOURCE_NAME_NOT_FOUND (0x80070716). The ETS log
+# reports that as "Setting process default activation context failed". The
+# sidecar has to name the Win32 SxS assemblies EtecFwk, EtecDom, Hawk,
+# EtecCtrl and Falcon (version 5.1.0.0); those DLLs are already in the ETS
+# directory and their own manifests satisfy the lookup.
+#
+# Separately, the Baggage plugin's type initializer loads
+# EIBA.Interop.EtecDOM 1.0.3135.0 by strong name. Fusion probes the ETS
+# application directory, not Common Files\EIBA sc, so the same DLLs also
+# have to sit next to ETS5.exe. There is no Class table entry and no GAC
+# component for this version; a copy is enough.
 . "$(dirname "$0")/lib.sh"
 
 need_cmd wine
@@ -37,9 +37,22 @@ installer_dir="$drive/windows/Installer"
 [ -d "$installer_dir" ] || die "no Windows Installer cache at $installer_dir; run scripts/50-ets.sh first"
 
 eiba_dir="$drive/Program Files (x86)/Common Files/EIBA sc"
+ets_dir=""
+for major in 5 6; do
+  cand="$drive/Program Files (x86)/ETS$major"
+  if [ -f "$cand/EtecRedirect.dll" ]; then
+    ets_dir=$cand
+    break
+  fi
+done
+[ -n "$ets_dir" ] || die "EtecRedirect.dll not found under Program Files (x86)/ETS5 or ETS6"
+
 marker="$eiba_dir/EIBA.Interop.EtecDOM.dll"
-if [ -f "$marker" ] && [ "${ETS5_EIBASC_REINSTALL:-0}" != 1 ]; then
-  printf 'EIBA.Interop.EtecDOM.dll already present, skipping (set ETS5_EIBASC_REINSTALL=1 to run it again)\n'
+manifest="$ets_dir/EtecRedirect.dll.manifest"
+app_copy="$ets_dir/EIBA.Interop.EtecDOM.dll"
+if [ -f "$marker" ] && [ -f "$manifest" ] && [ -f "$app_copy" ] \
+   && [ "${ETS5_EIBASC_REINSTALL:-0}" != 1 ]; then
+  printf 'EIBAsc compatibility layer already present, skipping (set ETS5_EIBASC_REINSTALL=1 to run it again)\n'
   exit 0
 fi
 
@@ -122,4 +135,48 @@ else
   printf 'warning: csc.exe is missing, skipping the load probe\n' >&2
 fi
 
+# Fusion loads EIBA.Interop.EtecDOM by strong name from the ETS application
+# directory. Hawk.Utils stays out of that directory: it is native and its
+# DllMain fails when no Hawk interface is attached.
+for f in "$eiba_dir"/EIBA.Interop.*.dll "$eiba_dir"/EIBA.DownloadImageHelper.dll; do
+  [ -f "$f" ] || continue
+  cp -f "$f" "$ets_dir/"
+done
+[ -f "$app_copy" ] || die "failed to copy EIBA.Interop.EtecDOM.dll next to ETS"
+
+# Resource 1 is absent from EtecRedirect.dll. CreateActCtx falls back to
+# this filename exactly (resource 1 does not get a ".1" suffix).
+cat > "$manifest" <<'EOF'
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<assembly xmlns="urn:schemas-microsoft-com:asm.v1" manifestVersion="1.0">
+  <assemblyIdentity name="EtecRedirect" version="1.0.0.0" type="win32"/>
+  <dependency>
+    <dependentAssembly>
+      <assemblyIdentity name="EtecFwk" type="win32" version="5.1.0.0"/>
+    </dependentAssembly>
+  </dependency>
+  <dependency>
+    <dependentAssembly>
+      <assemblyIdentity name="EtecDom" type="win32" version="5.1.0.0"/>
+    </dependentAssembly>
+  </dependency>
+  <dependency>
+    <dependentAssembly>
+      <assemblyIdentity name="Hawk" type="win32" version="5.1.0.0"/>
+    </dependentAssembly>
+  </dependency>
+  <dependency>
+    <dependentAssembly>
+      <assemblyIdentity name="EtecCtrl" type="win32" version="5.1.0.0"/>
+    </dependentAssembly>
+  </dependency>
+  <dependency>
+    <dependentAssembly>
+      <assemblyIdentity name="Falcon" type="win32" version="5.1.0.0"/>
+    </dependentAssembly>
+  </dependency>
+</assembly>
+EOF
+
 printf 'installed %s file(s) into %s\n' "$copied" "$eiba_dir"
+printf 'and EtecRedirect.dll.manifest plus the Interop assemblies into %s\n' "$ets_dir"
